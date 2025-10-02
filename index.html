@@ -1,276 +1,162 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-
   <meta charset="UTF-8" />
-
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
   <title>GPS HUD Speedometer</title>
-
   <style>
-
     html, body {
-
       margin: 0; padding: 0;
-
       background: black;
-
       color: lime;
-
       font-family: monospace;
-
       height: 100%;
-
       display: flex;
-
       justify-content: center;
-
       align-items: center;
-
       flex-direction: column;
-
       user-select: none;
-
       position: relative;
-
     }
 
     #speed {
-
       font-size: 30vw;
-
       font-weight: bold;
-
       text-align: center;
-
       line-height: 1;
-
-      transform: scaleX(-1);
-
       white-space: nowrap;
-
     }
 
     #unit {
-
       font-size: 12vw;
-
       text-align: center;
-
-      transform: scaleX(-1);
-
       white-space: nowrap;
+    }
 
+    /* Flipped mode */
+    .flipped #speed,
+    .flipped #unit {
+      transform: scaleX(-1);
     }
 
     @media (max-width: 400px) {
-
-      #speed {
-
-        font-size: 40vw;
-
-      }
-
-      #unit {
-
-        font-size: 16vw;
-
-      }
-
+      #speed { font-size: 40vw; }
+      #unit { font-size: 16vw; }
     }
 
-    /* Fullscreen button styles */
-
-    #fullscreenBtn {
-
+    /* Control buttons */
+    .controlBtn {
       position: fixed;
-
       top: 10px;
-
-      right: 10px;
-
       width: 36px;
-
       height: 36px;
-
       background: transparent;
-
       border: none;
-
       cursor: pointer;
-
       outline: none;
-
       padding: 0;
-
       user-select: none;
-
       display: flex;
-
       justify-content: center;
-
       align-items: center;
-
       transition: background-color 0.2s ease;
-
       color: lime;
-
     }
 
-    #fullscreenBtn:hover {
-
+    .controlBtn:hover {
       background-color: rgba(255, 255, 255, 0.1);
-
       border-radius: 4px;
-
     }
 
-    #fullscreenBtn svg {
-
+    .controlBtn svg {
       fill: currentColor;
-
       width: 24px;
-
       height: 24px;
-
     }
 
+    #fullscreenBtn { right: 10px; }
+    #flipBtn { right: 56px; } /* position to the left of fullscreen */
   </style>
-
 </head>
-
 <body>
-
   <div id="speed">0</div>
-
   <div id="unit">km/h</div>
 
-  <button id="fullscreenBtn" aria-label="Toggle fullscreen">
+  <!-- Flip Button -->
+  <button id="flipBtn" class="controlBtn" aria-label="Flip display">
+    <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6a6 6 0 0 1-6 6v2c4.42 0 8-3.58 8-8s-3.58-8-8-8zM6 12c0-1.1.9-2 2-2h1V8H8a4 4 0 0 0-4 4c0 3.31 2.69 6 6 6v-2c-2.21 0-4-1.79-4-4z"/></svg>
+  </button>
 
-    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-
-      <path d="M7 14H5v5h5v-2H7v-3zm10 3h-3v2h5v-5h-2v3zM7 5h3V3H5v5h2V5zm10 3h2V3h-5v2h3v3z"/>
-
-    </svg>
-
+  <!-- Fullscreen Button -->
+  <button id="fullscreenBtn" class="controlBtn" aria-label="Toggle fullscreen">
+    <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm10 3h-3v2h5v-5h-2v3zM7 5h3V3H5v5h2V5zm10 3h2V3h-5v2h3v3z"/></svg>
   </button>
 
   <script>
-
     let speedElement = document.getElementById('speed');
 
     function updateSpeed(newSpeed) {
-
       speedElement.textContent = Math.round(newSpeed);
-
     }
 
     if ('geolocation' in navigator) {
-
       navigator.geolocation.watchPosition(position => {
-
         let speedMps = position.coords.speed;
-
         if (speedMps === null) speedMps = 0;
-
         let speedKph = speedMps * 3.6;
-
         updateSpeed(speedKph);
-
       }, error => {
-
         console.error('GPS error:', error);
-
       }, {
-
         enableHighAccuracy: true,
-
         maximumAge: 0,
-
         timeout: 10000
-
       });
-
     } else {
-
       alert('Geolocation not supported on this device');
-
     }
 
-    // Fullscreen toggle button
-
+    // Fullscreen toggle
     const fullscreenBtn = document.getElementById('fullscreenBtn');
-
     fullscreenBtn.addEventListener('click', () => {
-
       if (!document.fullscreenElement) {
-
         document.documentElement.requestFullscreen().catch(err => {
-
           alert(`Error enabling fullscreen: ${err.message} (${err.name})`);
-
         });
-
       } else {
-
         document.exitFullscreen();
-
       }
-
     });
 
-    // Screen Wake Lock to keep screen always on (where supported)
+    // Flip toggle
+    const flipBtn = document.getElementById('flipBtn');
+    flipBtn.addEventListener('click', () => {
+      document.body.classList.toggle('flipped');
+    });
 
+    // Screen Wake Lock
     let wakeLock = null;
-
     async function requestWakeLock() {
-
       try {
-
         wakeLock = await navigator.wakeLock.request('screen');
-
-        console.log('Screen Wake Lock acquired');
-
         wakeLock.addEventListener('release', () => {
-
-          console.log('Screen Wake Lock was released');
-
+          console.log('Screen Wake Lock released');
         });
-
       } catch (err) {
-
         console.error(`${err.name}, ${err.message}`);
-
       }
-
     }
 
     if ('wakeLock' in navigator) {
-
       requestWakeLock();
-
       document.addEventListener('visibilitychange', () => {
-
         if (wakeLock !== null && document.visibilityState === 'visible') {
-
           requestWakeLock();
-
         }
-
       });
-
     } else {
-
       console.warn('Screen Wake Lock API not supported on this browser.');
-
     }
-
   </script>
-
-<script src="/cdn-cgi/scripts/7d0fa10a/cloudflare-static/rocket-loader.min.js" data-cf-settings="7004d960469ae0fa82b928b8-|49" defer type="68c31512758ecfef05b19be3-text/javascript"></script><script src="/cdn-cgi/scripts/7d0fa10a/cloudflare-static/rocket-loader.min.js" data-cf-settings="68c31512758ecfef05b19be3-|49" defer type="8ccf6a7387eda724d7980cc1-text/javascript"></script><script src="/cdn-cgi/scripts/7d0fa10a/cloudflare-static/rocket-loader.min.js" data-cf-settings="8ccf6a7387eda724d7980cc1-|49" defer></script><script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"rayId":"979deb939a9efcfc","version":"2025.8.0","r":1,"token":"4d6c3c90850c42f5a7d5edc441d08c82","serverTiming":{"name":{"cfExtPri":true,"cfEdge":true,"cfOrigin":true,"cfL4":true,"cfSpeedBrain":true,"cfCacheStatus":true}}}' crossorigin="anonymous"></script>
 </body>
-
 </html>
